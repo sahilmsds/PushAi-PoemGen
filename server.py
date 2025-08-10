@@ -7,7 +7,9 @@ Adds advanced poem generation capabilities to Puch AI
 import asyncio
 import json
 import sys
+import os
 import aiohttp
+from aiohttp import web
 import random
 import logging
 from typing import Any, Dict, List, Optional
@@ -410,83 +412,182 @@ class PoemGeneratorMCP:
                 "isError": True
             }
 
-async def main():
-    """Main MCP server loop"""
-    server = PoemGeneratorMCP()
-    logger.info(f"🎭 Starting {server.name} MCP server v{server.version}")
-    logger.info("Ready to generate beautiful poems! 📝✨")
+# HTTP Server for Web Deployment
+async def handle_mcp_request(request):
+    """Handle MCP requests via HTTP"""
+    server = request.app['mcp_server']
     
     try:
-        while True:
-            try:
-                # Read JSON-RPC message from stdin
-                line = await asyncio.get_event_loop().run_in_executor(None, sys.stdin.readline)
-                if not line:
-                    break
+        data = await request.json()
+        method = data.get("method")
+        params = data.get("params", {})
+        msg_id = data.get("id")
+        
+        response = {"jsonrpc": "2.0", "id": msg_id}
+        
+        if method == "initialize":
+            response["result"] = {
+                "protocolVersion": "2024-11-05",
+                "capabilities": {
+                    "tools": {}
+                },
+                "serverInfo": {
+                    "name": server.name,
+                    "version": server.version
+                }
+            }
+            
+        elif method == "tools/list":
+            tools = await server.list_tools()
+            response["result"] = {"tools": tools}
+            
+        elif method == "tools/call":
+            tool_name = params.get("name")
+            arguments = params.get("arguments", {})
+            result = await server.handle_tool_call(tool_name, arguments)
+            response["result"] = result
+            
+        else:
+            response["error"] = {
+                "code": -32601,
+                "message": f"Method not found: {method}"
+            }
+        
+        return web.json_response(response)
+        
+    except Exception as e:
+        logger.error(f"HTTP request error: {e}")
+        return web.json_response({
+            "jsonrpc": "2.0",
+            "id": None,
+            "error": {
+                "code": -32603,
+                "message": f"Internal error: {str(e)}"
+            }
+        }, status=500)
+
+async def health_check(request):
+    """Health check endpoint"""
+    return web.json_response({
+        "status": "healthy",
+        "server": "poem-generator",
+        "version": "1.1.0"
+    })
+
+async def create_app():
+    """Create the web application"""
+    app = web.Application()
+    app['mcp_server'] = PoemGeneratorMCP()
+    
+    # Routes
+    app.router.add_post('/mcp', handle_mcp_request)
+    app.router.add_get('/health', health_check)
+    app.router.add_get('/', health_check)  # Root endpoint
+    
+    return app
+
+async def main():
+    """Main function for both MCP and web modes"""
+    # Check if we're running in web mode (Render/Heroku) or MCP mode
+    if os.getenv('PORT') or len(sys.argv) > 1 and sys.argv[1] == 'web':
+        # Web mode
+        logger.info("🌐 Starting in Web mode for Render deployment")
+        app = await create_app()
+        port = int(os.getenv('PORT', 8080))
+        
+        runner = web.AppRunner(app)
+        await runner.setup()
+        site = web.TCPSite(runner, '0.0.0.0', port)
+        await site.start()
+        
+        logger.info(f"🚀 Server running on port {port}")
+        logger.info("🎭 Poem Generator MCP Server is ready!")
+        
+        # Keep the server running
+        try:
+            await asyncio.Event().wait()  # Run forever
+        except KeyboardInterrupt:
+            logger.info("🛑 Server shutting down...")
+        finally:
+            await runner.cleanup()
+    else:
+        # MCP mode (stdin/stdout)
+        logger.info("📡 Starting in MCP mode")
+        server = PoemGeneratorMCP()
+        logger.info(f"🎭 Starting {server.name} MCP server v{server.version}")
+        logger.info("Ready to generate beautiful poems! 📝✨")
+        
+        try:
+            while True:
+                try:
+                    # Read JSON-RPC message from stdin
+                    line = await asyncio.get_event_loop().run_in_executor(None, sys.stdin.readline)
+                    if not line:
+                        break
+                        
+                    message = json.loads(line.strip())
+                    method = message.get("method")
+                    params = message.get("params", {})
+                    msg_id = message.get("id")
                     
-                message = json.loads(line.strip())
-                method = message.get("method")
-                params = message.get("params", {})
-                msg_id = message.get("id")
-                
-                response = {"jsonrpc": "2.0", "id": msg_id}
-                
-                if method == "initialize":
-                    response["result"] = {
-                        "protocolVersion": "2024-11-05",
-                        "capabilities": {
-                            "tools": {}
-                        },
-                        "serverInfo": {
-                            "name": server.name,
-                            "version": server.version
+                    response = {"jsonrpc": "2.0", "id": msg_id}
+                    
+                    if method == "initialize":
+                        response["result"] = {
+                            "protocolVersion": "2024-11-05",
+                            "capabilities": {
+                                "tools": {}
+                            },
+                            "serverInfo": {
+                                "name": server.name,
+                                "version": server.version
+                            }
+                        }
+                        logger.info("✅ Server initialized successfully")
+                        
+                    elif method == "tools/list":
+                        tools = await server.list_tools()
+                        response["result"] = {"tools": tools}
+                        logger.info(f"📋 Listed {len(tools)} available tools")
+                        
+                    elif method == "tools/call":
+                        tool_name = params.get("name")
+                        arguments = params.get("arguments", {})
+                        logger.info(f"🔧 Calling tool: {tool_name}")
+                        result = await server.handle_tool_call(tool_name, arguments)
+                        response["result"] = result
+                        
+                    else:
+                        response["error"] = {
+                            "code": -32601,
+                            "message": f"Method not found: {method}"
+                        }
+                    
+                    # Send response
+                    print(json.dumps(response), flush=True)
+                    
+                except json.JSONDecodeError as e:
+                    logger.error(f"JSON decode error: {e}")
+                    continue
+                except Exception as e:
+                    logger.error(f"Message handling error: {e}")
+                    error_response = {
+                        "jsonrpc": "2.0", 
+                        "id": msg_id if 'msg_id' in locals() else None,
+                        "error": {
+                            "code": -32603,
+                            "message": f"Internal error: {str(e)}"
                         }
                     }
-                    logger.info("✅ Server initialized successfully")
+                    print(json.dumps(error_response), flush=True)
                     
-                elif method == "tools/list":
-                    tools = await server.list_tools()
-                    response["result"] = {"tools": tools}
-                    logger.info(f"📋 Listed {len(tools)} available tools")
-                    
-                elif method == "tools/call":
-                    tool_name = params.get("name")
-                    arguments = params.get("arguments", {})
-                    logger.info(f"🔧 Calling tool: {tool_name}")
-                    result = await server.handle_tool_call(tool_name, arguments)
-                    response["result"] = result
-                    
-                else:
-                    response["error"] = {
-                        "code": -32601,
-                        "message": f"Method not found: {method}"
-                    }
-                
-                # Send response
-                print(json.dumps(response), flush=True)
-                
-            except json.JSONDecodeError as e:
-                logger.error(f"JSON decode error: {e}")
-                continue
-            except Exception as e:
-                logger.error(f"Message handling error: {e}")
-                error_response = {
-                    "jsonrpc": "2.0", 
-                    "id": msg_id if 'msg_id' in locals() else None,
-                    "error": {
-                        "code": -32603,
-                        "message": f"Internal error: {str(e)}"
-                    }
-                }
-                print(json.dumps(error_response), flush=True)
-                
-    except KeyboardInterrupt:
-        logger.info("🛑 Server shutting down gracefully...")
-    except Exception as e:
-        logger.error(f"💥 Fatal error: {e}")
-    finally:
-        await server.close_session()
-        logger.info("👋 Goodbye!")
+        except KeyboardInterrupt:
+            logger.info("🛑 Server shutting down gracefully...")
+        except Exception as e:
+            logger.error(f"💥 Fatal error: {e}")
+        finally:
+            await server.close_session()
+            logger.info("👋 Goodbye!")
 
 if __name__ == "__main__":
     asyncio.run(main())

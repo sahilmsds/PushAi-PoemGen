@@ -16,21 +16,33 @@ Or visit directly: https://puch.ai/mcp/poem-generator
 🛠️ Available Tools
 1. generate_poem 🎭
 Generate custom poems with full control over style, mood, and length.
-Theme: "ocean waves"
-Style: "free_verse" | "haiku" | "limerick" | "sonnet" | "rhyming" | "acrostic"
-Length: "short" | "medium" | "long"
-Mood: "happy" | "sad" | "inspiring" | "romantic" | "mysterious" | "playful"
+Parameters:
+
+theme: "ocean waves"
+style: "free_verse" | "haiku" | "limerick" | "sonnet" | "rhyming" | "acrostic"
+length: "short" | "medium" | "long"
+mood: "happy" | "sad" | "inspiring" | "romantic" | "mysterious" | "playful"
+
 2. quick_poem ✨
 Get instant inspirational poetry with just a theme.
-Theme: "courage"
+Parameters:
+
+theme: "courage"
+
 3. haiku_generator 🌸
 Create traditional 5-7-5 haiku poems.
-Subject: "cherry blossoms"
-Season: "spring" | "summer" | "autumn" | "winter" | "any"
+Parameters:
+
+subject: "cherry blossoms"
+season: "spring" | "summer" | "autumn" | "winter" | "any"
+
 4. acrostic_poem 📝
 Generate poems using the first letters of any word.
-Word: "HOPE"
-Theme: "perseverance" (optional)
+Parameters:
+
+word: "HOPE"
+theme: "perseverance" (optional)
+
 📋 Example Usage
 Quick Inspiration
 json{
@@ -41,11 +53,11 @@ json{
 }
 Custom Love Poem
 json{
-  "name": "generate_poem",
+  "name": "generate_poem", 
   "arguments": {
     "theme": "eternal love",
     "style": "sonnet",
-    "length": "medium",
+    "length": "medium", 
     "mood": "romantic"
   }
 }
@@ -54,7 +66,7 @@ json{
   "name": "haiku_generator",
   "arguments": {
     "subject": "falling leaves",
-    "season": "autumn"
+    "season": "autumn" 
   }
 }
 🔧 Technical Setup
@@ -104,7 +116,7 @@ Local Development
 bash# Run locally
 python server.py
 
-# Test the server
+# Test the server  
 python test.py
 🔐 Authentication
 This server uses Bearer token authentication as required by Puch AI:
@@ -117,21 +129,21 @@ GET / - Server information
 
 🎯 Use Cases
 
-Creative Writing: Generate inspiration for stories and scripts
-Social Media: Create engaging poetry content
-Education: Help students learn different poetry forms
-Personal: Express emotions through AI-generated verse
-Gifts: Create personalized poems for special occasions
+Creative Writing - Generate inspiration for stories and scripts
+Social Media - Create engaging poetry content
+Education - Help students learn different poetry forms
+Personal - Express emotions through AI-generated verse
+Gifts - Create personalized poems for special occasions
 
 🏆 Hackathon Project
 Built for the Puch AI Hackathon 2024 - extending AI capabilities with creative poetry generation.
 #BuildWithPuch
 Competition Features
 
-Real-time Usage Tracking: Monitor live user engagement
-Public Leaderboard: Track adoption and popularity
-Viral Potential: Shareable, creative content
-Broad Appeal: Universal love for poetry and creativity
+Real-time Usage Tracking - Monitor live user engagement
+Public Leaderboard - Track adoption and popularity
+Viral Potential - Shareable, creative content
+Broad Appeal - Universal love for poetry and creativity
 
 🤖 AI Model
 Powered by advanced language models through Hugging Face Router API for high-quality, contextually appropriate poetry generation.
@@ -151,11 +163,11 @@ on wings we cannot see.
 *🤖 AI Generated*
 🚀 Getting Started
 
-Connect to Puch AI: Use /mcp use poem-generator
-Choose your tool: Pick from 4 different poem types
-Provide your theme: What do you want your poem about?
-Customize (optional): Set style, mood, and length
-Generate: Get your AI-created poem instantly!
+Connect to Puch AI - Use /mcp use poem-generator
+Choose your tool - Pick from 4 different poem types
+Provide your theme - What do you want your poem about?
+Customize (optional) - Set style, mood, and length
+Generate - Get your AI-created poem instantly!
 
 🤝 Contributing
 Feel free to contribute improvements, new poetry styles, or additional features!

@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Poem Generator - Puch AI Hackathon</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f0f4f8;
+      margin: 0; padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      color: #333;
+    }
+    .container {
+      background: white;
+      margin: 40px 20px;
+      padding: 30px 40px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgb(0 0 0 / 0.1);
+      max-width: 600px;
+      width: 100%;
+    }
+    h1 {
+      margin-bottom: 0.5em;
+      color: #007acc;
+      text-align: center;
+    }
+    label {
+      font-weight: 600;
+      display: block;
+      margin-top: 1.2em;
+      margin-bottom: 0.3em;
+    }
+    input[type="text"], select {
+      width: 100%;
+      padding: 10px;
+      font-size: 1em;
+      border: 1.8px solid #ccc;
+      border-radius: 4px;
+      transition: border-color 0.3s ease;
+    }
+    input[type="text"]:focus, select:focus {
+      border-color: #007acc;
+      outline: none;
+    }
+    button {
+      margin-top: 20px;
+      width: 100%;
+      background-color: #007acc;
+      color: white;
+      font-size: 1.1em;
+      padding: 12px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    button:hover {
+      background-color: #005fa3;
+    }
+    pre {
+      background: #f7f9fc;
+      padding: 20px;
+      border-radius: 6px;
+      margin-top: 30px;
+      white-space: pre-wrap;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 1em;
+      line-height: 1.4;
+      border: 1.5px solid #ddd;
+      min-height: 120px;
+    }
+    .footer {
+      text-align: center;
+      margin-top: 50px;
+      font-size: 0.9em;
+      color: #777;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Poem Generator</h1>
+    <label for="themeInput">Theme</label>
+    <input type="text" id="themeInput" placeholder="e.g., nature, love, friendship" />
+
+    <label for="styleSelect">Style</label>
+    <select id="styleSelect">
+      <option value="quick_poem" selected>Quick Poem (Simple)</option>
+      <option value="generate_poem">Generate Poem (Custom)</option>
+      <option value="haiku_generator">Haiku</option>
+      <option value="acrostic_poem">Acrostic</option>
+    </select>
+
+    <div id="extraOptions" style="display:none;">
+      <label for="styleType">Poem Style (for Generate Poem)</label>
+      <select id="styleType">
+        <option value="free_verse" selected>Free Verse</option>
+        <option value="haiku">Haiku</option>
+        <option value="limerick">Limerick</option>
+        <option value="sonnet">Sonnet</option>
+        <option value="rhyming">Rhyming</option>
+        <option value="acrostic">Acrostic</option>
+      </select>
+
+      <label for="lengthSelect">Length</label>
+      <select id="lengthSelect">
+        <option value="short" selected>Short</option>
+        <option value="medium">Medium</option>
+        <option value="long">Long</option>
+      </select>
+
+      <label for="moodSelect">Mood</label>
+      <select id="moodSelect">
+        <option value="inspiring" selected>Inspiring</option>
+        <option value="happy">Happy</option>
+        <option value="sad">Sad</option>
+        <option value="romantic">Romantic</option>
+        <option value="mysterious">Mysterious</option>
+        <option value="playful">Playful</option>
+      </select>
+    </div>
+
+    <button id="generateBtn">Generate Poem</button>
+
+    <pre id="output" aria-live="polite" aria-atomic="true" role="region"></pre>
+  </div>
+
+  <div class="footer">
+    Powered by Puch AI Hackathon MCP Server
+  </div>
+
+  <script>
+    const styleSelect = document.getElementById('styleSelect');
+    const extraOptions = document.getElementById('extraOptions');
+    const generateBtn = document.getElementById('generateBtn');
+    const output = document.getElementById('output');
+
+    styleSelect.addEventListener('change', () => {
+      if(styleSelect.value === 'generate_poem') {
+        extraOptions.style.display = 'block';
+      } else {
+        extraOptions.style.display = 'none';
+      }
+    });
+
+    async function callPoemAPI(payload) {
+      try {
+        const response = await fetch('https://puchai-poem-generator.onrender.com/mcp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!response.ok) {
+          throw new Error(`Server error: ${response.status}`);
+        }
+        const data = await response.json();
+        return data;
+      } catch (err) {
+        return { error: err.message };
+      }
+    }
+
+    generateBtn.onclick = async () => {
+      output.textContent = "Generating poem... Please wait.";
+
+      const theme = document.getElementById('themeInput').value.trim();
+      if (!theme) {
+        output.textContent = "Please enter a theme!";
+        return;
+      }
+
+      const style = styleSelect.value;
+      let payload;
+
+      if (style === 'generate_poem') {
+        const poemStyle = document.getElementById('styleType').value;
+        const length = document.getElementById('lengthSelect').value;
+        const mood = document.getElementById('moodSelect').value;
+
+        payload = {
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/call",
+          params: {
+            name: style,
+            arguments: {
+              theme: theme,
+              style: poemStyle,
+              length: length,
+              mood: mood
+            }
+          }
+        };
+      } else if (style === 'haiku_generator') {
+        payload = {
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/call",
+          params: {
+            name: style,
+            arguments: { subject: theme, season: 'any' }
+          }
+        };
+      } else if (style === 'acrostic_poem') {
+        payload = {
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/call",
+          params: {
+            name: style,
+            arguments: { word: theme }
+          }
+        };
+      } else {
+        // quick_poem or fallback
+        payload = {
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/call",
+          params: {
+            name: "quick_poem",
+            arguments: { theme: theme }
+          }
+        };
+      }
+
+      const result = await callPoemAPI(payload);
+
+      if (result.error) {
+        output.textContent = `Error: ${result.error}`;
+      } else if (result.result && result.result.content && result.result.content.length > 0) {
+        output.textContent = result.result.content.map(item => item.text).join('\n\n');
+      } else {
+        output.textContent = "No poem returned.";
+      }
+    };
+  </script>
+</body>
+</html>

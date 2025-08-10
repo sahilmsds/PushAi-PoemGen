@@ -3,5 +3,5 @@ services:
     name: puchai-poem-generator
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: python server.py
+    startCommand: python server.py web
     plan: free

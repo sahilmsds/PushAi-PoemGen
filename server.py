@@ -3,7 +3,7 @@
 Enhanced Poem Generator MCP Server for Puch AI Hackathon
 Adds advanced poem generation capabilities to Puch AI
 """
-
+from aiohttp_cors import setup as cors_setup, ResourceOptions
 import asyncio
 import json
 import sys
@@ -14,6 +14,7 @@ import random
 import logging
 from typing import Any, Dict, List, Optional
 import time
+import aiohttp_cors
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -467,24 +468,39 @@ async def handle_mcp_request(request):
         }, status=500)
 
 async def health_check(request):
-    """Health check endpoint"""
     return web.json_response({
         "status": "healthy",
         "server": "poem-generator",
         "version": "1.1.0"
     })
+async def handle_index(request):
+    return web.FileResponse('./static/index.html')
 
 async def create_app():
-    """Create the web application"""
     app = web.Application()
     app['mcp_server'] = PoemGeneratorMCP()
-    
-    # Routes
-    app.router.add_post('/mcp', handle_mcp_request)
-    app.router.add_get('/health', health_check)
-    app.router.add_get('/', health_check)  # Root endpoint
-    
+
+    # Configure default CORS settings
+    cors = aiohttp_cors.setup(app, defaults={
+        "*": aiohttp_cors.ResourceOptions(
+            allow_credentials=True,
+            expose_headers="*",
+            allow_headers="*",
+        )
+    })
+
+    # Register routes
+    resource = cors.add(app.router.add_resource("/mcp"))
+    cors.add(resource.add_route("POST", handle_mcp_request))
+
+    resource_health = cors.add(app.router.add_resource("/health"))
+    cors.add(resource_health.add_route("GET", health_check))
+
+    resource_root = cors.add(app.router.add_resource("/"))
+    cors.add(resource_root.add_route("GET", handle_index))
+
     return app
+
 
 async def main():
     """Main function for both MCP and web modes"""

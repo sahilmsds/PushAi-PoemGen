@@ -126,6 +126,12 @@ class PoemGeneratorMCP:
 
     async def query_ai_api(self, prompt: str, max_retries: int = 2) -> Optional[str]:
         session = await self.get_session()
+    
+        token = os.getenv('HF_API_TOKEN')
+        if not token:
+            logger.error("❌ HF_API_TOKEN environment variable not found or empty!")
+        else:
+            logger.info("✅ HF_API_TOKEN found, proceeding with API call.")
         
         headers = {
             "Authorization": f"Bearer {os.getenv('HF_API_TOKEN')}"

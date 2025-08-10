@@ -125,53 +125,66 @@ class PoemGeneratorMCP:
         ]
 
     async def query_ai_api(self, prompt: str, max_retries: int = 2) -> Optional[str]:
-        session = await self.get_session()
-    
-        token = os.getenv('HF_API_TOKEN')
-        if not token:
-            logger.error("❌ HF_API_TOKEN environment variable not found or empty!")
-        else:
-            logger.info("✅ HF_API_TOKEN found, proceeding with API call.")
-        
-        headers = {
-            "Authorization": f"Bearer {os.getenv('HF_API_TOKEN')}"
-        }
-        
-        payload = {
-            "inputs": prompt,
-            "parameters": {
-                "max_length": 200,
-                "temperature": 0.7,
-                "do_sample": True,
-                "return_full_text": False,
-                "pad_token_id": 50256
+            session = await self.get_session()  # Make sure you have an aiohttp.ClientSession cached here
+
+            hf_token = os.getenv('HF_API_TOKEN')
+            if not hf_token:
+                logger.error("❌ HF_API_TOKEN environment variable not found or empty!")
+                return None
+            else:
+                logger.info("✅ HF_API_TOKEN found, proceeding with API call.")
+
+            headers = {
+                "Authorization": f"Bearer {hf_token}",
+                "Content-Type": "application/json"
             }
-        }
-        
-        for attempt in range(max_retries):
-            try:
-                async with session.post(
-                    self.hf_api_url,
-                    json=payload,
-                    headers=headers,
-                    timeout=aiohttp.ClientTimeout(total=15)
-                ) as response:
-                    if response.status == 200:
-                        result = await response.json()
-                        if isinstance(result, list) and len(result) > 0:
-                            text = result[0].get('generated_text', '').strip()
-                            return text if len(text) > 10 else None
-                        return result.get('generated_text', '').strip()
-                    elif response.status == 503:
-                        # Model loading, wait and retry
-                        logger.info(f"Model loading, retrying in 3 seconds... (attempt {attempt + 1})")
-                        await asyncio.sleep(3)
-                        continue
-            except Exception as e:
-                logger.warning(f"AI API attempt {attempt + 1} failed: {e}")
-                if attempt < max_retries - 1:
-                    await asyncio.sleep(2)
-        return None
+
+            payload = {
+                "inputs": prompt,
+                "parameters": {
+                    "max_length": 200,
+                    "temperature": 0.7,
+                    "do_sample": True,
+                    "return_full_text": False,
+                    "pad_token_id": 50256
+                }
+            }
+
+            url = self.hf_api_url = "https://api-inference.huggingface.co/models/gpt2"
+
+            for attempt in range(max_retries):
+                try:
+                    async with session.post(url, json=payload, headers=headers, timeout=aiohttp.ClientTimeout(total=15)) as response:
+                        logger.info(f"HF API status: {response.status}")
+                        text_response = await response.text()
+                        logger.info(f"HF API raw response: {text_response}")
+
+                        if response.status == 200:
+                            result = await response.json()
+                            if isinstance(result, list) and len(result) > 0:
+                                text = result[0].get('generated_text', '').strip()
+                                if len(text) > 10:
+                                    return text
+                            else:
+                                text = result.get('generated_text', '').strip()
+                                if len(text) > 10:
+                                    return text
+                            # Fallback if no text found
+                            logger.warning("No generated text found in response.")
+                            return None
+                        elif response.status == 503:
+                            logger.info(f"Model loading, retrying in 3 seconds... (attempt {attempt + 1})")
+                            await asyncio.sleep(3)
+                        else:
+                            logger.error(f"Unexpected response status {response.status} from HF API.")
+                            return None
+                except Exception as e:
+                    logger.warning(f"HF API attempt {attempt + 1} failed: {e}")
+                    if attempt < max_retries - 1:
+                        await asyncio.sleep(2)
+
+            logger.error("Max retries reached without successful response.")
+            return None
 
 
     def create_enhanced_poem(self, theme: str, style: str = "free_verse", length: str = "short", mood: str = "inspiring") -> str:

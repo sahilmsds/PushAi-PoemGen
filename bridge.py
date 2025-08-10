@@ -1,8 +1,19 @@
 import sys
 import json
-import requests
+from transformers import pipeline
 
-POEMGEN_API_URL = "http://localhost:8000"
+# Initialize generator once
+generator = pipeline('text-generation', model='distilgpt2', device=-1)
+
+def generate_poem(params):
+    theme = params.get('theme', 'life')
+    style = params.get('style', 'free verse')
+    length = params.get('length', 'short')
+
+    prompt = f"Write a {length} {style} poem about {theme}."
+
+    results = generator(prompt, max_length=100, num_return_sequences=1)
+    return results[0]['generated_text']
 
 def main():
     while True:
@@ -41,18 +52,10 @@ def main():
             elif method == "callTool":
                 params = msg.get("params", {}).get("arguments", {})
                 try:
-                    response = requests.post(
-                        f"{RAILWAY_API_URL}/generate_poem",
-                        json=params,
-                        timeout=15
-                    )
-                    data = response.json()
-                    if "poem" in data:
-                        result_content = data["poem"]
-                    else:
-                        result_content = f"Error: {data.get('error', 'Unknown error')}"
+                    poem = generate_poem(params)
+                    result_content = poem
                 except Exception as e:
-                    result_content = f"Request failed: {str(e)}"
+                    result_content = f"Generation failed: {str(e)}"
 
                 sys.stdout.write(json.dumps({
                     "id": id_,

@@ -13,7 +13,7 @@ from aiohttp import web
 import random
 import logging
 from typing import Any, Dict, List, Optional
-import time
+
 import aiohttp_cors
 
 # Configure logging
@@ -432,50 +432,54 @@ class PoemGeneratorMCP:
                 ],
                 "isError": True
             }
+class MyMCPServer:
+    def __init__(self, name, version):
+        self.name = name
+        self.version = version
 
+    async def list_tools(self):
+        return []
+
+    async def handle_tool_call(self, tool_name, arguments):
+        return {"output": f"Called tool {tool_name} with args {arguments}"}
 # HTTP Server for Web Deployment
 async def handle_mcp_request(request):
     """Handle MCP requests via HTTP"""
     server = request.app['mcp_server']
-    
+
     try:
         data = await request.json()
         method = data.get("method")
         params = data.get("params", {})
         msg_id = data.get("id")
-        
+
         response = {"jsonrpc": "2.0", "id": msg_id}
-        
+
         if method == "initialize":
             response["result"] = {
                 "protocolVersion": "2024-11-05",
-                "capabilities": {
-                    "tools": {}
-                },
-                "serverInfo": {
-                    "name": server.name,
-                    "version": server.version
-                }
+                "capabilities": {"tools": {}},
+                "serverInfo": {"name": server.name, "version": server.version}
             }
-            
+
         elif method == "tools/list":
             tools = await server.list_tools()
             response["result"] = {"tools": tools}
-            
+
         elif method == "tools/call":
             tool_name = params.get("name")
             arguments = params.get("arguments", {})
             result = await server.handle_tool_call(tool_name, arguments)
             response["result"] = result
-            
+
         else:
             response["error"] = {
                 "code": -32601,
                 "message": f"Method not found: {method}"
             }
-        
+
         return web.json_response(response)
-        
+
     except Exception as e:
         logger.error(f"HTTP request error: {e}")
         return web.json_response({
@@ -625,5 +629,18 @@ async def main():
             await server.close_session()
             logger.info("👋 Goodbye!")
 
+async def root_handler(request):
+    return web.Response(text="Puch AI MCP server is running.")
 if __name__ == "__main__":
-    asyncio.run(main())
+    app = web.Application()
+
+    # Create MCP server object
+    my_mcp_server = MyMCPServer(name="Poem Generator", version="1.0.0")
+    app['mcp_server'] = my_mcp_server
+
+    # Routes
+    app.router.add_post('/mcp', handle_mcp_request)
+    app.router.add_get('/', root_handler)
+
+    # Run
+    web.run_app(app, port=int(os.getenv("PORT", 8000)))

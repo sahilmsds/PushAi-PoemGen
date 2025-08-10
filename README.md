@@ -1,4 +1,4 @@
-🎭 Poem Generator MCP Server
+### 🎭 Poem Generator MCP Server
 An AI-powered poetry generation MCP server built for the Puch AI Hackathon. Generate beautiful, custom poems in multiple styles with just a few words!
 ✨ Features
 

@@ -1,12 +1,8 @@
 import sys
 import json
-import os
 import requests
 
-RAILWAY_API_URL = os.environ.get(
-    "RAILWAY_API_URL",
-    "http://127.0.0.1:8000"  # default local for testing
-)
+POEMGEN_API_URL = "http://localhost:8000"
 
 def main():
     while True:

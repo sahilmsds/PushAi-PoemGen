@@ -100,7 +100,6 @@ class PoemGeneratorMCP:
 
         return None
 
-
     async def generate_poem(self, prompt: str) -> str:
         ai_poem = await self.query_ai_api(prompt)
         if ai_poem:
@@ -145,14 +144,14 @@ class PoemGeneratorMCP:
 
 # HTTP handlers
 def setup_routes(app):
-    resource = app.router.add_resource("/mcp")
+    # Only add POST route - let aiohttp_cors handle OPTIONS automatically
     app.router.add_route("POST", "/mcp", handle_mcp_request)
     app.router.add_get("/health", lambda r: web.json_response({"status": "healthy"}))
     app.router.add_get("/", lambda r: web.Response(text="Puch AI MCP server is running."))
 
 def cors_wrap(app):
     cors = aiohttp_cors.setup(app, defaults={"*": aiohttp_cors.ResourceOptions(
-        allow_credentials=True, expose_headers="*", allow_headers="*"
+        allow_credentials=True, expose_headers="*", allow_headers="*", allow_methods="*"
     )})
     for route in list(app.router.routes()):
         cors.add(route)
@@ -161,6 +160,7 @@ async def handle_mcp_request(request):
     server = request.app['mcp_server']
     data = await request.json()
     method, params, msg_id = data.get("method"), data.get("params", {}), data.get("id")
+    
     if method == "initialize":
         return web.json_response({"jsonrpc": "2.0", "id": msg_id, "result": {
             "protocolVersion": "2024-11-05",
@@ -203,7 +203,7 @@ async def main():
     except KeyboardInterrupt:
         logger.info("🛑 Stopping server...")
     finally:
-        await app['mcp_server'].close_session()  # ✅ ensures no unclosed session
+        await app['mcp_server'].close_session()
         await runner.cleanup()
         logger.info("✅ Server stopped cleanly.")
 

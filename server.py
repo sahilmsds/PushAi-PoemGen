@@ -125,8 +125,11 @@ class PoemGeneratorMCP:
         ]
 
     async def query_ai_api(self, prompt: str, max_retries: int = 2) -> Optional[str]:
-        """Query AI API with async requests and fallback"""
         session = await self.get_session()
+        
+        headers = {
+            "Authorization": f"Bearer {os.getenv('HF_API_TOKEN')}"
+        }
         
         payload = {
             "inputs": prompt,
@@ -142,30 +145,28 @@ class PoemGeneratorMCP:
         for attempt in range(max_retries):
             try:
                 async with session.post(
-                    self.hf_api_url, 
-                    json=payload, 
+                    self.hf_api_url,
+                    json=payload,
+                    headers=headers,
                     timeout=aiohttp.ClientTimeout(total=15)
                 ) as response:
-                    
                     if response.status == 200:
                         result = await response.json()
                         if isinstance(result, list) and len(result) > 0:
                             text = result[0].get('generated_text', '').strip()
                             return text if len(text) > 10 else None
                         return result.get('generated_text', '').strip()
-                        
                     elif response.status == 503:
                         # Model loading, wait and retry
                         logger.info(f"Model loading, retrying in 3 seconds... (attempt {attempt + 1})")
                         await asyncio.sleep(3)
                         continue
-                        
             except Exception as e:
                 logger.warning(f"AI API attempt {attempt + 1} failed: {e}")
                 if attempt < max_retries - 1:
                     await asyncio.sleep(2)
-                    
         return None
+
 
     def create_enhanced_poem(self, theme: str, style: str = "free_verse", length: str = "short", mood: str = "inspiring") -> str:
         """Generate enhanced fallback poem using diverse templates"""

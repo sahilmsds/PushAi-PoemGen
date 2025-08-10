@@ -632,15 +632,16 @@ async def main():
 async def root_handler(request):
     return web.Response(text="Puch AI MCP server is running.")
 if __name__ == "__main__":
-    app = web.Application()
+    import asyncio
+    import os
+    import logging
 
-    # Create MCP server object
-    my_mcp_server = MyMCPServer(name="Poem Generator", version="1.0.0")
-    app['mcp_server'] = my_mcp_server
+    logging.basicConfig(level=logging.INFO)
 
-    # Routes
-    app.router.add_post('/mcp', handle_mcp_request)
-    app.router.add_get('/', root_handler)
+    # Always run in web mode on Render
+    os.environ.setdefault("PORT", "8000")
 
-    # Run
-    web.run_app(app, port=int(os.getenv("PORT", 8000)))
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logging.info("🛑 Server stopped by user")
